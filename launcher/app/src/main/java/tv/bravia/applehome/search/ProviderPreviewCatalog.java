@@ -5,6 +5,7 @@ import java.io.*;
 import java.net.*;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
+import java.util.concurrent.*;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -12,6 +13,7 @@ import org.json.JSONObject;
 final class ProviderPreviewCatalog {
   private static final int LIMIT = 8;
   private final Context context;
+  private final ExecutorService feeds = Executors.newFixedThreadPool(2);
 
   static final class Title {
     final String title, tmdbId, imageUrl;
@@ -52,8 +54,10 @@ final class ProviderPreviewCatalog {
   Result load(String service) {
     String key = apiKey();
     if (key.isEmpty()) return new Result(Collections.emptyList(), false);
-    Feed movies = loadType(service, "movie", key);
-    Feed series = loadType(service, "series", key);
+    Future<Feed> movieRequest = feeds.submit(() -> loadType(service, "movie", key));
+    Future<Feed> seriesRequest = feeds.submit(() -> loadType(service, "series", key));
+    Feed movies = await(movieRequest);
+    Feed series = await(seriesRequest);
     List<Title> mixed = new ArrayList<>();
     Set<String> seen = new HashSet<>();
     // Preserve each chart's ranking while preventing a movie-heavy combined
@@ -65,6 +69,19 @@ final class ProviderPreviewCatalog {
       append(mixed, seen, series.titles, i);
     }
     return new Result(mixed, movies.fresh && series.fresh);
+  }
+
+  void dispose() {
+    feeds.shutdownNow();
+  }
+
+  private static Feed await(Future<Feed> result) {
+    try {
+      return result.get();
+    } catch (Exception failure) {
+      if (failure instanceof InterruptedException) Thread.currentThread().interrupt();
+      return new Feed(Collections.emptyList(), false);
+    }
   }
 
   private static void append(List<Title> mixed, Set<String> seen, List<Title> source, int index) {
@@ -121,7 +138,10 @@ final class ProviderPreviewCatalog {
       } catch (Exception ignored) {
       }
       return new Feed(titles, true);
-    } catch (Exception ignored) {
+    } catch (Exception failure) {
+      android.util.Log.w(
+          "BraviaPreview",
+          "Catalog " + service + "/" + type + ": " + failure.getClass().getSimpleName());
       // Keep last successful titles on an outage; the controller retries after 15 minutes.
       return new Feed(stale, false);
     }

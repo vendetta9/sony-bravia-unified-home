@@ -107,9 +107,14 @@ merely sitting in a directory while declaring the root package.
   and response/miss caching. Network work is initiated off the UI thread.
 - `MovieAvailability`: India provider union, deduplication/access labels and cache.
 - `ProviderPreviewController`: rotating preview cards, artwork lifecycle and
-  transitions; consumed only by Glass presentation.
+  transitions; consumed only by Glass presentation. Provider identity guards
+  prevent an old catalog rotating during a handoff. Cached metadata decoding is
+  independent of remote-refresh cooldowns. Thumbnail/title-logo preparation is
+  atomic at card publication; optional original-resolution backdrop loading has
+  its own worker and never replaces the visible title treatment.
 - `ProviderPreviewCatalog`: separate movie/series queries and daily response
-  caches, source-aware chart/popularity fallback, deduplication and balanced
+  caches, concurrent typed requests, source-aware chart/popularity fallback,
+  deduplication and balanced
   eight-title mixing. A partial fetch keeps cached titles and remains eligible
   for a 15-minute retry. It has no focus, Canvas or animation responsibilities.
 - `TitleArtwork`: TMDB title/backdrop/logo lookup used by the preview feature.

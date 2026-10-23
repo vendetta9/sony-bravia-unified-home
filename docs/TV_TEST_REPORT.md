@@ -1,7 +1,33 @@
-# TV verification report — 23 October 2026
+# TV verification report — updated 24 October 2026
 
 Device: Sony BRAVIA VH22 / Android 12, `192.168.68.104:5555`.
 Public UI names: **Glass UI**, **Minimalist UI**, **Android UI**.
+
+## OTT switching and title treatment — 24 October
+
+The final APK was rebuilt and installed after fixing the preview handoff:
+
+- Old-provider rotation is gated by displayed-provider identity.
+- Catalog-refresh cooldowns no longer prevent cached artwork/metadata recovery.
+- Movie/series requests run concurrently; failed empty catalogs retry after
+  10 seconds. Already cached stale catalogs retain the 15-minute refresh retry.
+- Thumbnail and title logo are prepared before publishing the next card.
+  Optional original-resolution background upgrades do not change its title/logo.
+
+A temporary native UI capture driver completed the requested 16-screen flow:
+Android UI, three-second Home chooser, Minimalist Netflix focus, Apple TV library
+focus, Obsession query/details, then Glass Netflix series, Prime Awarapan 2,
+Zee5 Obsession, Apple TV Tenzing, Sports, Music, Apps, Obsession query/details
+and the grouped All Apps pane. The four provider/title pairs were checked
+against the active displayed controller state before capture and visually reviewed.
+Netflix's captured series was Birangana. No fixture artwork or invented matches
+were inserted. Native keyboard and actual API responses were used.
+
+The chooser was opened using the app's gesture controller, not a new physical
+remote verification. The temporary driver package/APKs were removed and the
+Home helper rebound after the run. All 16 new captures remain outside the
+repository pending the user's image-publication approval. The previous capture
+batch was deleted. The earlier 30-check naming suite was not rerun in this flow.
 
 ## Movie and TV-show preview update
 
@@ -101,7 +127,7 @@ Test runner APKs are temporary and removed; captures remain outside the repo.
 
 ## Final binary
 
-SHA-256: `72d950ed8fcec845bf5666821b34a778a145316a267806eb884d819caf10c6b6`
+SHA-256: `459fad4ded6e52cbb298ef3894cbc1189af7a41fcb85bd6a293df933e9540101`
 
 The installed `base.apk` hash matches `outputs/sony-bravia-unified-home.apk`.
 Only this final APK is retained in the repository.

@@ -32,14 +32,16 @@ import java.util.concurrent.Executors;
 /** Loads provider-specific artwork and rotates the featured title while its dock app is focused. */
 public final class ProviderPreviewController {
   private static final long ROTATE_MS = 5000L;
+  private static final String TAG = "BraviaPreview";
   private final android.view.View view;
   private final Context context;
   private final ProviderPreviewCatalog catalog;
   private final Handler main = new Handler(Looper.getMainLooper());
   private final ExecutorService worker = Executors.newFixedThreadPool(2);
+  private final ExecutorService artworkWorker = Executors.newSingleThreadExecutor();
   private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
   private final List<Preview> items = new ArrayList<>();
-  private String selectedKey = "";
+  private volatile String selectedKey = "";
   private String selectedLabel = "";
   private String displayedLabel = "";
   private String displayedService = "";
@@ -47,6 +49,12 @@ public final class ProviderPreviewController {
   private final Set<String> loading = new HashSet<>();
   private final Map<String, Long> catalogDays = new java.util.HashMap<>();
   private final Map<String, Long> refreshAttempts = new java.util.HashMap<>();
+  private final Map<String, Long> frameAttempts = new java.util.HashMap<>();
+  private long selectedAt;
+  private final Runnable switchLoad =
+      () -> {
+        if (!this.disposed && !selectedKey.isEmpty()) load(selectedKey, selectedLabel);
+      };
 
   private static long indiaDay(long millis) {
     return (millis + 19800000L) / 86400000L;
@@ -70,7 +78,9 @@ public final class ProviderPreviewController {
         @Override
         public void run() {
           if (disposed || selectedKey.isEmpty()) return;
-          if (items.size() > 1 && !rotating) {
+          // items still belongs to displayedService until the new provider is ready.
+          // Never rotate that old catalog under the new provider's request key.
+          if (selectedKey.equals(displayedService) && items.size() > 1 && !rotating) {
             final String service = selectedKey;
             final int next = (index + 1) % items.size();
             final Preview item = items.get(next);
@@ -83,6 +93,7 @@ public final class ProviderPreviewController {
                         if (disposed) return;
                         rotating = false;
                         if (service.equals(selectedKey)
+                            && service.equals(displayedService)
                             && next < items.size()
                             && items.get(next) == item
                             && item.bitmap != null) {
@@ -110,11 +121,15 @@ public final class ProviderPreviewController {
   public void select(String packageName) {
     String key = catalogFor(packageName);
     if (key.equals(selectedKey)) {
-      if (!key.isEmpty() && !fresh(key)) load(key, selectedLabel);
+      if (!key.isEmpty()
+          && android.os.SystemClock.uptimeMillis() - selectedAt >= 180
+          && (!fresh(key) || !key.equals(displayedService))) load(key, selectedLabel);
       return;
     }
     main.removeCallbacks(rotate);
+    main.removeCallbacks(switchLoad);
     selectedKey = key;
+    selectedAt = android.os.SystemClock.uptimeMillis();
     selectedLabel = labelFor(packageName);
     view.invalidate();
     if (!key.isEmpty()) {
@@ -128,7 +143,7 @@ public final class ProviderPreviewController {
       List<Preview> cached = catalogs.get(key);
       if (fresh(key) && cached != null && !cached.isEmpty() && cached.get(0).bitmap != null)
         show(cached, selectedLabel);
-      else load(key, selectedLabel);
+      else main.postDelayed(switchLoad, 180);
       main.postDelayed(rotate, ROTATE_MS);
     }
   }
@@ -252,6 +267,7 @@ public final class ProviderPreviewController {
                   preview.bitmap = null;
                   preview.logo = null;
                 }
+            enhanceCurrent();
           }
         });
     animator.start();
@@ -264,6 +280,7 @@ public final class ProviderPreviewController {
     index = 0;
     displayedLabel = label;
     displayedService = selectedKey;
+    android.util.Log.i(TAG, "Displaying " + displayedService + ": " + items.get(0).title);
     crossfade();
   }
 
@@ -291,41 +308,73 @@ public final class ProviderPreviewController {
     previousItem = null;
     if (animator != null) animator.cancel();
     worker.shutdownNow();
+    artworkWorker.shutdownNow();
+    catalog.dispose();
   }
 
   private void load(String service, String label) {
-    if (disposed) return;
+    if (disposed || loading.contains(service)) return;
     long now = System.currentTimeMillis();
+    List<Preview> saved = catalogs.get(service);
+    boolean hasSaved = saved != null && !saved.isEmpty();
     Long attempted = refreshAttempts.get(service);
-    if (!fresh(service) && attempted != null && now - attempted < 15L * 60000L) return;
-    if (!loading.add(service)) return;
-    refreshAttempts.put(service, now);
+    // Catalog refresh cooldown must not block decoding an already cached provider.
+    boolean refresh =
+        !fresh(service)
+            && (attempted == null || now - attempted >= (hasSaved ? 15L * 60000L : 10000L));
+    if (!hasSaved && !refresh) return;
+    Long frameAttempt = frameAttempts.get(service);
+    if (!refresh && frameAttempt != null && now - frameAttempt < 1500L) return;
+    loading.add(service);
+    frameAttempts.put(service, now);
+    if (refresh) refreshAttempts.put(service, now);
     final long day = indiaDay(now);
-    final List<Preview> cached = fresh(service) ? catalogs.get(service) : null;
+    final boolean wasFresh = fresh(service);
     worker.execute(
         () -> {
-          List<Preview> loaded = cached;
-          boolean complete = true;
-          if (loaded == null || loaded.isEmpty()) {
-            ProviderPreviewCatalog.Result result = catalog.load(service);
-            loaded = new ArrayList<>();
-            for (ProviderPreviewCatalog.Title title : result.titles)
-              loaded.add(new Preview(title.title, title.tmdbId, title.imageUrl, title.trending));
-            complete = result.complete;
+          if (!service.equals(selectedKey)) {
+            main.post(() -> loading.remove(service));
+            return;
           }
-          if (!loaded.isEmpty()) loadPreview(loaded.get(0));
+          List<Preview> loaded = saved;
+          boolean complete = wasFresh;
+          if (refresh) {
+            ProviderPreviewCatalog.Result result = catalog.load(service);
+            if (!result.titles.isEmpty()) {
+              loaded = new ArrayList<>();
+              for (ProviderPreviewCatalog.Title title : result.titles)
+                loaded.add(new Preview(title.title, title.tmdbId, title.imageUrl, title.trending));
+              complete = result.complete;
+            }
+          }
+          if (loaded == null) loaded = new ArrayList<>();
+          int readyIndex = -1;
+          if (service.equals(selectedKey)) {
+            // A missing image for the first chart entry must not block the whole OTT.
+            for (int i = 0; i < Math.min(3, loaded.size()) && service.equals(selectedKey); i++) {
+              loadPreview(loaded.get(i));
+              if (loaded.get(i).bitmap != null) {
+                readyIndex = i;
+                break;
+              }
+            }
+          }
+          if (readyIndex > 0) java.util.Collections.rotate(loaded, -readyIndex);
           final List<Preview> ready = loaded;
           final boolean freshResult = complete;
           main.post(
               () -> {
                 if (disposed) return;
                 loading.remove(service);
-                if (!ready.isEmpty() && ready.get(0).bitmap != null) {
+                if (!ready.isEmpty()) {
+                  // Retain metadata even when artwork fails, so a retry does not re-query APIs.
                   catalogs.put(service, ready);
                   catalogDays.put(service, freshResult ? day : day - 1);
-                  while (catalogs.size() > 4) catalogs.remove(catalogs.keySet().iterator().next());
-                  if (service.equals(selectedKey)) show(ready, label);
-                }
+                  if (service.equals(selectedKey) && ready.get(0).bitmap != null)
+                    show(ready, label);
+                  else if (service.equals(selectedKey))
+                    android.util.Log.w(TAG, "Artwork pending for " + service);
+                } else android.util.Log.w(TAG, "Catalog unavailable for " + service + "; retrying");
                 view.invalidate();
               });
         });
@@ -333,18 +382,54 @@ public final class ProviderPreviewController {
 
   private void loadPreview(Preview item) {
     if (item.bitmap != null) return;
+    // Resolve the title treatment before publishing a new card. Late logo changes
+    // would visibly replace plain text with a different font one second later.
     if (!item.resolved) {
-      TitleArtwork.Images artwork = TitleArtwork.lookup(context, item.tmdbId);
-      item.originalUrl = artwork.backdrop;
-      item.logoUrl = artwork.logo;
+      TitleArtwork.Images art = TitleArtwork.lookup(context, item.tmdbId);
+      item.originalUrl = art.backdrop;
+      item.logoUrl = art.logo;
       item.resolved = true;
     }
-    item.bitmap = cachedBitmap(item.originalUrl);
-    if (item.bitmap == null) item.bitmap = cachedBitmap(item.fallbackUrl);
     item.logo = cachedBitmap(item.logoUrl);
+    item.bitmap = cachedBitmap(item.originalUrl, false);
+    item.enhanced = item.bitmap != null;
+    if (item.bitmap == null) item.bitmap = cachedBitmap(item.fallbackUrl);
+  }
+
+  private void enhanceCurrent() {
+    if (disposed || items.isEmpty() || !selectedKey.equals(displayedService)) return;
+    Preview item = items.get(Math.min(index, items.size() - 1));
+    if (item.enhancing || item.enhanced || item.originalUrl.isEmpty()) return;
+    item.enhancing = true;
+    String service = selectedKey;
+    artworkWorker.execute(
+        () -> {
+          Bitmap original = null;
+          if (!disposed && service.equals(selectedKey)) original = cachedBitmap(item.originalUrl);
+          final Bitmap readyOriginal = original;
+          main.post(
+              () -> {
+                item.enhancing = false;
+                if (disposed) return;
+                if (service.equals(selectedKey)
+                    && service.equals(displayedService)
+                    && !items.isEmpty()
+                    && items.get(Math.min(index, items.size() - 1)) == item
+                    && readyOriginal != null) {
+                  // Upgrade only the backdrop. The title/logo committed with the card stays fixed.
+                  item.bitmap = readyOriginal;
+                  item.enhanced = true;
+                  view.invalidate();
+                }
+              });
+        });
   }
 
   private Bitmap cachedBitmap(String address) {
+    return cachedBitmap(address, true);
+  }
+
+  private Bitmap cachedBitmap(String address, boolean download) {
     if (address == null || address.isEmpty()) return null;
     File directory = new File(context.getCacheDir(), "glass-artwork");
     directory.mkdirs();
@@ -359,6 +444,7 @@ public final class ProviderPreviewController {
         file.setLastModified(System.currentTimeMillis());
         return decodeArtwork(file);
       }
+      if (!download) return null;
       HttpURLConnection connection = (HttpURLConnection) new URL(address).openConnection();
       File pending = new File(directory, key.toString() + ".part");
       try {
@@ -455,7 +541,7 @@ public final class ProviderPreviewController {
     final boolean trending;
     volatile Bitmap bitmap, logo;
     String originalUrl = "", logoUrl = "";
-    boolean resolved;
+    boolean resolved, enhancing, enhanced;
     final Bitmap texture = null;
 
     Preview(String value, String id, String fallback, boolean trending) {

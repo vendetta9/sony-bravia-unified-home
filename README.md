@@ -192,8 +192,18 @@ official chart has no titles of one type, that type uses its provider popularity
 catalog and its cards are labeled Popular on. Separate movie/series caches
 prevent old movie-only responses from hiding TV shows; partial refresh failures
 retain available cached titles and retry after 15 minutes.
-TMDB provides original backdrops/title logos when available, otherwise catalog
-artwork/title text is used. Not every title has native 4K. Artwork uses a 256 MB
+Movie and series catalog requests run concurrently. Switching providers can
+reuse cached title metadata immediately; the old provider stops rotating while
+the next provider loads. A failed catalog with no saved titles retries after
+10 seconds; refreshing an existing stale catalog retains the 15-minute retry
+interval. Missing artwork retries from cached metadata instead of being blocked
+by the catalog refresh timer.
+
+The next card's thumbnail and title logo are prepared together before switching,
+so plain text does not change to a logo one second afterward. TMDB provides
+original backdrops/title logos when available, otherwise catalog artwork/title
+text is used. Original-resolution backgrounds can upgrade afterward without
+changing the committed title treatment. Not every title has native 4K. Artwork uses a 256 MB
 disk cache with decoded frames limited to current/outgoing cards.
 
 ### Glass live sports
