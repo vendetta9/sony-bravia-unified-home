@@ -6,5 +6,8 @@ launcher/build/
 launcher/local.properties
 work/
 outputs/*
+!outputs/photos/
+outputs/photos/*
+!outputs/photos/*.png
 *.apk
 *.idsig

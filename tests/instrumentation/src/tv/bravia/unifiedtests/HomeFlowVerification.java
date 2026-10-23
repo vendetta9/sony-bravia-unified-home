@@ -206,7 +206,7 @@ public final class HomeFlowVerification extends Instrumentation {
       check(
           resumed.equals("HomeChooserActivity") && chooserCount == before + 1,
           "Long-press release keeps chooser open");
-      sendKeyDownUpSync(KeyEvent.KEYCODE_DPAD_DOWN);
+      sendKeyDownUpSync(KeyEvent.KEYCODE_DPAD_UP);
       sendKeyDownUpSync(KeyEvent.KEYCODE_DPAD_CENTER);
       await("GlassHomeActivity");
       check(
@@ -214,6 +214,7 @@ public final class HomeFlowVerification extends Instrumentation {
           "Glass saved choice");
       home(3100);
       await("HomeChooserActivity");
+      sendKeyDownUpSync(KeyEvent.KEYCODE_DPAD_DOWN);
       sendKeyDownUpSync(KeyEvent.KEYCODE_DPAD_DOWN);
       sendKeyDownUpSync(KeyEvent.KEYCODE_DPAD_CENTER);
       Thread.sleep(800);
@@ -224,7 +225,6 @@ public final class HomeFlowVerification extends Instrumentation {
       // home.
       home(3100);
       await("HomeChooserActivity");
-      sendKeyDownUpSync(KeyEvent.KEYCODE_DPAD_UP);
       sendKeyDownUpSync(KeyEvent.KEYCODE_DPAD_UP);
       sendKeyDownUpSync(KeyEvent.KEYCODE_DPAD_CENTER);
       await("MinimalistHomeActivity");

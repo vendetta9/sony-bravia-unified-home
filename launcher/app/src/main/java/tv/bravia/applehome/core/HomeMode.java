@@ -2,8 +2,8 @@ package tv.bravia.applehome.core;
 
 /** Canonical stored IDs with compatibility for previous Unified Home selections. */
 public enum HomeMode {
-  MINIMALIST("minimalist", "Minimalist UI"),
   GLASS("glass", "Glass UI"),
+  MINIMALIST("minimalist", "Minimalist UI"),
   ANDROID("android", "Android UI");
   public final String id, label;
 

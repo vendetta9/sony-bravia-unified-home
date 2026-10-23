@@ -3,6 +3,25 @@
 Device: Sony BRAVIA VH22 / Android 12, `192.168.68.104:5555`.
 Public UI names: **Glass UI**, **Minimalist UI**, **Android UI**.
 
+## Chooser sequence and approved UI gallery — 24 October
+
+The chooser now renders **Glass UI → Minimalist UI → Android UI**. Canonical
+stored IDs are unchanged, so the previous Home choice and per-UI ordering
+survive. The final APK was rebuilt and installed on the TV. The visible button
+order was checked in native chooser captures above Android UI and Minimalist UI;
+the two older chooser photos were replaced before publishing the gallery.
+Existing integration-runner DPAD paths were updated to match the new sequence.
+After screenshot automation briefly interrupted physical Home interception, the
+helper was rebound and checked with no crashed-service marker. The user then
+confirmed that a physical three-second Home hold opened the chooser correctly.
+The full naming regression suite was not rerun for this ordering-only change.
+
+The user approved publishing the consolidated source and captures. The current
+`outputs/photos/` gallery contains **18 approved PNGs**, including additional
+app-grid/chooser views. The configured final APK remains local and Git-ignored.
+Only PNGs are allowed through the gallery's ignore exceptions; capture logs,
+`.DS_Store`, credentials and build output are not published.
+
 ## OTT switching and title treatment — 24 October
 
 The final APK was rebuilt and installed after fixing the preview handoff:
@@ -25,8 +44,8 @@ were inserted. Native keyboard and actual API responses were used.
 
 The chooser was opened using the app's gesture controller, not a new physical
 remote verification. The temporary driver package/APKs were removed and the
-Home helper rebound after the run. All 16 new captures remain outside the
-repository pending the user's image-publication approval. The previous capture
+Home helper rebound after the run. The 16 new captures were initially kept outside the repository for review;
+the user subsequently approved publishing the selected PNG copies. The previous capture
 batch was deleted. The earlier 30-check naming suite was not rerun in this flow.
 
 ## Movie and TV-show preview update
@@ -123,11 +142,12 @@ This is integration and smoke coverage. Physical microphone input, every provide
 deep link/subscription entitlement, continuous volume holds, actual uninstall
 completion, all input hardware, long-duration/day-boundary refreshes and media
 pause in every external app were not reverified. No user app was uninstalled.
-Test runner APKs are temporary and removed; captures remain outside the repo.
+Temporary runner APKs were removed. Working captures remain outside Git; the
+approved PNG gallery is now published under `outputs/photos/`.
 
 ## Final binary
 
-SHA-256: `459fad4ded6e52cbb298ef3894cbc1189af7a41fcb85bd6a293df933e9540101`
+SHA-256: `b381259fc1386e0ebfed2371a3c5423e18e86c85949e307030a8ea2efb780b7d`
 
 The installed `base.apk` hash matches `outputs/sony-bravia-unified-home.apk`.
 Only this final APK is retained in the repository.

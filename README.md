@@ -6,6 +6,7 @@
 - [Switch home screens](#choose-any-of-the-three-home-screens)
 - [Which UI to use](#which-ui-to-use)
 - [Features by UI](#features-by-ui)
+- [UI captures](#ui-captures)
 - [Code organization](#code-organization)
 - [Local API configuration](#local-api-configuration)
 - [Build, install and update](#build-install-and-update)
@@ -46,7 +47,8 @@ copies in this new directory, not symlinks to either original repo.
 
 1. **Hold the physical Home button for 3 seconds** from either custom UI,
    Android UI, or another app.
-2. Choose **Glass UI**, **Minimalist UI**, or **Android UI**, then press OK.
+2. The chooser lists **Glass UI → Minimalist UI → Android UI**, in that order.
+   Select one and press OK.
 3. Normal Home presses now return to that saved choice.
 4. Hold Home again to choose another mode. Cancel leaves the choice unchanged.
 
@@ -257,6 +259,33 @@ Google sports rights; Google was used to discover public sources during developm
   fallback. Physical remote behavior still depends on Sony firmware/key delivery.
 - Paused theme activities stop their status, preview and sports polling. Disposal
   cancels controllers/callbacks so switching layouts does not stack active pollers.
+
+## UI captures
+
+[Browse all 18 full-resolution PNG captures](outputs/photos).
+The gallery covers Android UI, the three-second Home chooser, Minimalist UI,
+app focus, search/results, Glass OTT previews, Sports, Music and both app panes.
+Chooser order: **Glass UI → Minimalist UI → Android UI**.
+
+| Glass UI · Netflix TV show | Minimalist UI · Netflix focused |
+| --- | --- |
+| ![Glass UI with a Netflix show](outputs/photos/07_1-glass-netflix-show.png) | ![Minimalist UI with Netflix focused](outputs/photos/03-minimalist-netflix.png) |
+
+| Home chooser | Android UI |
+| --- | --- |
+| ![Glass, Minimalist, Android chooser order](outputs/photos/02-home-chooser.png) | ![Android UI](outputs/photos/01-android-ui.png) |
+
+| Glass movie search result | Glass Sports |
+| --- | --- |
+| ![Obsession search result](outputs/photos/15-glass-result.png) | ![Football, cricket and F1 widgets](outputs/photos/11-glass-sports.png) |
+
+| Glass Music | Grouped All Apps |
+| --- | --- |
+| ![Music apps and idle player](outputs/photos/12-glass-music.png) | ![Grouped All Apps](outputs/photos/16-glass-all-apps.png) |
+
+These are native TV captures. Listings, scores and availability reflect the
+capture time and can change. Only approved PNGs are included; configured APKs,
+API credentials, capture logs and system metadata are excluded.
 
 ## Code organization
 
@@ -550,8 +579,9 @@ adb -s "$BRAVIA_TV" logcat -d -s AndroidRuntime:E BraviaSports:W
 shasum -a 256 outputs/sony-bravia-unified-home.apk
 ```
 
-Keep verification captures outside the repo; required app artwork and SDK assets
-are retained, with no generated screenshot collection or stale final APK copies.
+Keep working verification captures outside the repo. The approved UI gallery
+lives in `outputs/photos/`; only its PNG files are shared. Configured APKs,
+capture logs, temporary screenshots and SDK/build files stay excluded from Git.
 
 ## Debugging and troubleshooting
 
