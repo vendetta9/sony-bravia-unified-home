@@ -1,0 +1,10 @@
+.env
+.env.*
+!.env.example
+.DS_Store
+launcher/build/
+launcher/local.properties
+work/
+outputs/*
+*.apk
+*.idsig

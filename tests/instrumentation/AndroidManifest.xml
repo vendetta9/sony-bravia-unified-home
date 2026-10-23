@@ -1,0 +1,5 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="tv.bravia.unifiedtests">
+  <uses-sdk android:minSdkVersion="26" android:targetSdkVersion="35" />
+  <application android:label="Temporary Bravia verification" android:testOnly="true" />
+  <instrumentation android:name=".HomeFlowVerification" android:targetPackage="tv.bravia.applehome" android:functionalTest="true" />
+</manifest>

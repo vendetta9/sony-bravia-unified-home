@@ -1,0 +1,14 @@
+{
+  "sources": [
+    "Sony Bravia TV Debloat",
+    "Sony Bravia Glass Design"
+  ],
+  "upstream_reference": "https://github.com/Gathin23/cleanyourtv",
+  "application_id": "tv.bravia.applehome",
+  "resource_renames": {},
+  "ui_names": {
+    "minimalist": "Minimalist UI",
+    "glass": "Glass UI",
+    "android": "Android UI"
+  }
+}

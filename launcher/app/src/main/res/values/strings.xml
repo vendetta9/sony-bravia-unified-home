@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">Sony Bravia Unified Home</string>
+    <string name="home_key_description">Home opens your saved layout. Hold Home for 3 seconds to choose Minimalist UI, Glass UI or Android UI.</string>
+</resources>

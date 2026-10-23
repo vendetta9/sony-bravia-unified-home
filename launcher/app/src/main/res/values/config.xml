@@ -1,0 +1,12 @@
+<resources>
+    <integer name="columns">6</integer>
+    <string-array name="dock_apps">
+        <item>LIVE_TV</item>
+        <item>com.netflix.ninja</item>
+        <item>in.startv.hotstar</item>
+        <item>com.amazon.amazonvideo.livingroom</item>
+        <item>tv.airtel.xstream.tvapp</item>
+        <item>com.apple.atve.sony.appletv</item>
+        <item>com.formulaone.production</item>
+    </string-array>
+</resources>
